@@ -104,7 +104,7 @@ def render_chat_area():
         }
         
         if result.get("thought_history"):
-            assistant_message["thoughts"] = [t.to_dict() for t in result["thought_history"]]
+            assistant_message["thoughts"] = result["thought_history"]
         
         st.session_state.chat_history.append(assistant_message)
         

@@ -184,37 +184,46 @@ parameters: {{"city": "北京"}}
         :param response: 模型原始响应
         :return: 包含thought和action的字典
         """
-        thought_start = response.find("[THOUGHT]")
-        thought_end = response.find("[ACTION]")
-        action_start = response.find("[ACTION]")
-        action_end = len(response)
+        import re
         
-        # 提取思考内容
-        thought = ""
-        if thought_start != -1 and thought_end != -1:
-            thought = response[thought_start + len("[THOUGHT]"):thought_end].strip()
-        elif thought_start != -1:
-            thought = response[thought_start + len("[THOUGHT]"):].strip()
-        
-        # 提取行动内容
+        thought = response.strip()
+        action_content = ""
         action_type = ""
         parameters = {}
         
-        if action_start != -1:
-            action_content = response[action_start + len("[ACTION]"):action_end].strip()
+        if "[THOUGHT]" in response:
+            thought_start = response.find("[THOUGHT]") + len("[THOUGHT]")
+            thought_end = response.find("[ACTION]")
             
-            # 解析action_type
-            type_start = action_content.find("action_type:")
-            if type_start != -1:
-                type_end = action_content.find("\n", type_start)
-                if type_end == -1:
-                    type_end = len(action_content)
-                action_type = action_content[type_start + len("action_type:"):type_end].strip()
+            if thought_end == -1:
+                thought_end = response.find("[/THOUGHT]")
             
-            # 解析parameters
-            params_start = action_content.find("parameters:")
-            if params_start != -1:
-                params_str = action_content[params_start + len("parameters:"):].strip()
+            if thought_end == -1:
+                thought_end = len(response)
+            
+            thought = response[thought_start:thought_end].strip()
+            
+            if "[ACTION]" in response:
+                action_start = response.find("[ACTION]") + len("[ACTION]")
+                action_end = response.find("[OBSERVATION]")
+                
+                if action_end == -1:
+                    action_end = response.find("[/ACTION]")
+                
+                if action_end == -1:
+                    action_end = len(response)
+                
+                action_content = response[action_start:action_end].strip()
+        
+        thought = re.sub(r'\[/?(THOUGHT|ACTION|OBSERVATION)\]', '', thought).strip()
+        
+        if action_content:
+            type_match = re.search(r'action_type:\s*(.+?)(?:\n|$)', action_content)
+            action_type = type_match.group(1).strip() if type_match else ""
+            
+            params_match = re.search(r'parameters:\s*(.+?)(?:\n|$)', action_content)
+            if params_match:
+                params_str = params_match.group(1).strip()
                 try:
                     import json
                     parameters = json.loads(params_str)
